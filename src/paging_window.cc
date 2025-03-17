@@ -1,11 +1,17 @@
 #include "paging_window.h"
+#include "get_data.h"
 
 #include <QicsDataModelDefault.h>
 #include <QicsTable.h>
 
 #include <QLabel>
 
-PagingWindow::PagingWindow() {
+PagingWindow::PagingWindow(std::string conninfo) {
+    pq = new GetData(conninfo);
+    // 1. 获取数据模型的维度
+    // 2. 表格，显示前10条数据
+    // 3. 分页控件 (<<,<,[],>,>>)
+
     // dimensions of the data model
     const int numRows = 10;
     const int numCols = 5;

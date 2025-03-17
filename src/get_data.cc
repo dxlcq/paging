@@ -3,11 +3,15 @@
 
 #include "libpq-fe.h"
 
-static void exit_nicely(PGconn *conn) {
-    PQfinish(conn);
-    exit(1);
-}
+#include "get_data.h"
 
+// 只做连接
+GetData::GetData() {
+};
+
+GetData::~GetData() {};
+
+/*
 int main(int argc, char **argv) {
     const char *conninfo;  // 连接信息
     PGconn *conn;          // 用于数据库连接
@@ -104,3 +108,4 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+*/
