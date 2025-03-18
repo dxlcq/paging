@@ -10,7 +10,9 @@
 class GetData {
    public:
     // 连接固定数据库中固定的表
-    GetData(std::string conninfo);
+    GetData(std::string conninfo =
+                "host=localhost port=5432 dbname = qicstabledata user=postgres "
+                "password=postgres");
     ~GetData();
     uint32_t get_row() { return _row_all; };
     uint32_t get_col() { return _col_all; };

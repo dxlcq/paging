@@ -67,6 +67,11 @@ std::vector<std::vector<std::string>> GetData::FetchData(
     // * * * * * * * * * * * * * * * * * * * * *
 
     std::vector<std::vector<std::string>> res_table;
+    std::vector<std::string> col_name;
+    // 获取列名
+    for (uint32_t i = 0; i < _col_all; i++)
+        col_name.push_back(std::string(PQfname(_res, i)));
+    res_table.push_back(col_name);
 
     // one_page_num 每页，第 show_page_no 页
     for (u_int32_t row_index = (show_page_no - 1) * one_page_num, i = 0;
