@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "name": "Qt",
+            "includePath": [
+                "${workspaceFolder}/include/**",
+                "/home/jiao/Qt/6.8.2/gcc_64/include/**",
+                "/usr/include/postgresql/**",
+                "/home/jiao/Desktop/qicstable-master/include/**"
+            ],
+            "compilerPath": "/usr/bin/gcc"
+        }
+    ],
+    "version": 4
+}
