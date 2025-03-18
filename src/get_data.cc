@@ -1,111 +1,91 @@
+#include "get_data.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "libpq-fe.h"
+GetData::GetData(std::string conninfo) {
+    _conn = PQconnectdb(conninfo.c_str());
+    // 连接
+    if (CONNECTION_OK != PQstatus(_conn)) {
+        std::cerr << PQerrorMessage(_conn) << std::endl;
+        PQfinish(_conn);
+        exit(1);
+    }
 
-#include "get_data.h"
+    _res =
+        PQexec(_conn, "SELECT pg_catalog.set_config('search_path', '', false)");
+    // 安全
+    if (PGRES_TUPLES_OK != PQresultStatus(_res)) {
+        std::cerr << PQerrorMessage(_conn) << std::endl;
+        PQclear(_res);
+        PQfinish(_conn);
+        exit(1);
+    }
+    PQclear(_res);
+}
 
-// 只做连接
-GetData::GetData() {
+GetData::~GetData() {
+    // 断开连接
+    PQfinish(_conn);
 };
 
-GetData::~GetData() {};
+std::vector<std::vector<std::string>> GetData::FetchData(
+    const uint32_t one_page_num, const uint32_t show_page_no) {
+    _res = PQexec(_conn, "BEGIN");
+    // 事物块开始
+    if (PGRES_COMMAND_OK != PQresultStatus(_res)) {
+        std::cerr << PQerrorMessage(_conn) << std::endl;
+        PQclear(_res);
+        PQfinish(_conn);
+        exit(1);
+    }
+    PQclear(_res);
 
-/*
-int main(int argc, char **argv) {
-    const char *conninfo;  // 连接信息
-    PGconn *conn;          // 用于数据库连接
-    PGresult *res;         // 用于查询结果
+    _res = PQexec(_conn,
+                  "DECLARE myportal CURSOR FOR select * from public.events");
+    // 使用 myportal 游标来查询 public.events 表中的所有数据
+    if (PGRES_COMMAND_OK != PQresultStatus(_res)) {
+        std::cerr << PQerrorMessage(_conn) << std::endl;
+        PQclear(_res);
+        PQfinish(_conn);
+        exit(1);
+    };
+    PQclear(_res);
 
-    if (argc > 1)
-        conninfo = argv[1];
-    else
-        conninfo =
-            "host=localhost port=5432 dbname = qicstabledata user=postgres "
-            "password=postgres";
+    _res = PQexec(_conn, "FETCH ALL IN myportal");
+    // 获取游标中的所有数据
+    if (PGRES_TUPLES_OK != PQresultStatus(_res)) {
+        std::cerr << PQerrorMessage(_conn) << std::endl;
+        PQclear(_res);
+        PQfinish(_conn);
+        exit(1);
+    };
 
-    /* 建立一个到数据库的连接 */
-    conn = PQconnectdb(conninfo);
+    _col_all = PQnfields(_res);
+    _row_all = PQntuples(_res);
 
-    /* 如果连接失败，输出错误信息并退出程序 */
-    if (PQstatus(conn) != CONNECTION_OK) {
-        fprintf(stderr, "%s", PQerrorMessage(conn));
-        exit_nicely(conn);
+    // * * * * * * * * * * * * * * * * * * * * *
+
+    std::vector<std::vector<std::string>> res_table;
+
+    // one_page_num 每页，第 show_page_no 页
+    for (u_int32_t row_index = (show_page_no - 1) * one_page_num, i = 0;
+         row_index < _row_all && i < one_page_num; row_index++, i++) {
+        std::vector<std::string> row_data;
+        for (uint32_t col_index = 0; col_index < _col_all; col_index++)
+            row_data.push_back(PQgetvalue(_res, row_index, col_index));
+        res_table.push_back(row_data);
     }
 
-    /* 设置总是安全的搜索路径，因此恶意用户无法控制 */
-    res =
-        PQexec(conn, "SELECT pg_catalog.set_config('search_path', '', false)");
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        fprintf(stderr, "SET failed: %s", PQerrorMessage(conn));
-        PQclear(res);
-        exit_nicely(conn);
-    }
+    // * * * * * * * * * * * * * * * * * * * * *
 
-    /* 当使用完 PGresult 后，应该调用 PQclear 以避免内存泄漏 */
-    PQclear(res);
+    _res = PQexec(_conn, "CLOSE myportal");
+    // 关闭游标
+    PQclear(_res);
 
-    /* 开始一个事务块 */
-    res = PQexec(conn, "BEGIN");
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        fprintf(stderr, "BEGIN command failed: %s", PQerrorMessage(conn));
-        PQclear(res);
-        exit_nicely(conn);
-    }
-    PQclear(res);
+    _res = PQexec(_conn, "END");
+    // 事物块结束
+    PQclear(_res);
 
-    /*
-     * 搞一个游标 myportal  出来
-     */
-    res = PQexec(conn, "DECLARE myportal CURSOR FOR select * from public.events");
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        fprintf(stderr, "DECLARE CURSOR failed: %s", PQerrorMessage(conn));
-        PQclear(res);
-        exit_nicely(conn);
-    }
-    PQclear(res);
-
-    /*
-     * 从游标中获取数据
-     */
-    res = PQexec(conn, "FETCH ALL in myportal");
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        fprintf(stderr, "FETCH ALL failed: %s", PQerrorMessage(conn));
-        PQclear(res);
-        exit_nicely(conn);
-    }
-
-    /*
-     ******************************************** 暂时只需要关注这里
-     */
-
-    int nCols = PQnfields(res);     // 列数
-    int nRows = PQntuples(res);     // 行数
-    
-    for (int i = 0; i < nCols; i++) printf("%-15s", PQfname(res, i));
-    printf("\n");
-    for (int i = 0; i < nRows; i++) {
-        for (int j = 0; j < nCols; j++)
-            printf("%-30s ", PQgetvalue(res, i, j));
-        printf("\n");
-    }
-    PQclear(res);
-
-    /*
-     ********************************************
-     */
-
-    /* 关闭游标 ... 不关心错误检查？ ... */
-    res = PQexec(conn, "CLOSE myportal");
-    PQclear(res);
-
-    /* 结束一个事务块 */
-    res = PQexec(conn, "END");
-    PQclear(res);
-
-    /* 关闭数据库 */
-    PQfinish(conn);
-
-    return 0;
+    return res_table;
 }
-*/

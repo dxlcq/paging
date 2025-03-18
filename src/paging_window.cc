@@ -1,42 +1,36 @@
 #include "paging_window.h"
-#include "get_data.h"
 
-#include <QicsDataModelDefault.h>
-#include <QicsTable.h>
-
-#include <QLabel>
-
+#include <QString>
 PagingWindow::PagingWindow(std::string conninfo) {
-    pq = new GetData(conninfo);
-    // 1. 获取数据模型的维度
-    // 2. 表格，显示前10条数据
-    // 3. 分页控件 (<<,<,[],>,>>)
+    _pq = new GetData(conninfo);
+    auto res = _pq->FetchData(5, 3);
 
-    // dimensions of the data model
-    const int numRows = 10;
-    const int numCols = 5;
+    // 数据模型
+    _dm = new QicsDataModelDefault(res.size(), res[0].size());
 
-    // create the data model
-    QicsDataModel *dm = new QicsDataModelDefault(numRows, numCols);
+    // 塞数据
+    for (uint32_t row = 0; row < res.size(); row++)
+        for (uint32_t col = 0; col < res[row].size(); col++)
+            _dm->setItem(row, col,
+                         QicsDataString(QString::fromStdString(res[row][col])));
 
-    // populate the data model with some data
-    for (int i = 0; i < numRows; ++i)
-        for (int j = 0; j < numCols; ++j) dm->setItem(i, j, QicsDataInt(i * j));
+    // 使用数据模型创建表
+    _table = new QicsTable(_dm, 0);
+    _table->setWindowTitle(QObject::tr("paging 🥳"));
 
-    // create the table, using the data model we created above
-    QicsTable *table = new QicsTable(dm, 0);
-    table->setWindowTitle(QObject::tr("你好 👋"));
-
-    // make sure the table is only as large as necessary
-    table->setVisibleRows(numRows);
-    table->setVisibleColumns(numCols);
+    // 表格大小匹配数据模型
+    _table->setVisibleRows(res.size());
+    _table->setVisibleColumns(res[0].size());
 
     // Add a title widget to the top of the table
-    QLabel *label = new QLabel(QObject::tr("Hello World, Table"), table);
-    label->setAlignment(Qt::AlignCenter);
-    table->setTopTitleWidget(label);
+    // QLabel *label = new QLabel(QObject::tr("Hello World, Table"), _table);
+    // label->setAlignment(Qt::AlignCenter);
+    //_table->setTopTitleWidget(label);
 
-    table->activateWindow();
-    table->show();
+    _table->activateWindow();
+    _table->show();
 }
-PagingWindow::~PagingWindow() {}
+PagingWindow::~PagingWindow() {
+    delete _table;
+    delete _dm;
+}

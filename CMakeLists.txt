@@ -15,16 +15,19 @@ find_package(Qt6 REQUIRED COMPONENTS    # 查找 Qt 组件库
 include_directories(                    # 添加包含目录
     ${CMAKE_SOURCE_DIR}/include
     /home/jiao/Desktop/qicstable-master/include
+    /usr/include/postgresql
 )
 
 add_executable(paging                   # 生成可执行文件
     src/main.cc
     include/paging_window.h
     src/paging_window.cc
+    src/get_data.cc
 )
 
 target_link_libraries(paging            # 链接 Qt 库到 main
     Qt6::PrintSupport
     Qt6::Xml
     /home/jiao/Desktop/qicstable-master/lib/libqicstable.so.3
+    pq
 )

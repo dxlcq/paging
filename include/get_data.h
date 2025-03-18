@@ -1,20 +1,26 @@
 #pragma once
 
+#include <cstdint>
+#include <iostream>
+#include <string>
+#include <vector>
+
 #include "libpq-fe.h"
 
 class GetData {
    public:
-    GetData();
+    // 连接固定数据库中固定的表
+    GetData(std::string conninfo);
     ~GetData();
-    void fetchData();
+    uint32_t get_row() { return _row_all; };
+    uint32_t get_col() { return _col_all; };
+    // 每页显示 one_page_num 条数据，显示第 show_page_no 页的数据
+    std::vector<std::vector<std::string>> FetchData(uint32_t one_page_num,
+                                                    uint32_t show_page_no);
 
    private:
-    void exit_nicely(){
-        PQfinish(_conn);
-        exit(1);
-    }
-
-    const char *_conninfo;  // 数据库连接信息
-    PGconn *_conn;          // 数据库连接对象
-    PGresult *_res;         // 查询结果集
+    PGconn *_conn;      // 数据库连接对象
+    PGresult *_res;     // 查询结果集
+    uint32_t _row_all;  // 结果行数
+    uint32_t _col_all;  // 结果列数
 };
