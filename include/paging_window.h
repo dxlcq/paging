@@ -33,7 +33,7 @@ class PagingWindow : public QMainWindow {
     uint32_t _page = 1;        // 当前页码
     uint32_t _page_size = 10;  // 每页显示的记录数
 
-    GetData *_pq;        // 数据获取对象
+    //GetData *_pq;        // 数据获取对象
     QicsDataModel *_dm;  // 数据模型
     QicsTable *_table;   // 表格
 
