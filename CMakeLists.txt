@@ -1,33 +1,56 @@
-cmake_minimum_required(VERSION 3.28)    # 指定 CMake 的最低版本要求
-project(paging VERSION 1.0.0.20250317)  # 设置项目名称和版本号
+cmake_minimum_required(VERSION 3.28)
+project(paging VERSION 1.0.0.20250319)
 
-set(CMAKE_CXX_STANDARD 23)              # 指定 C++ 标准版本
-set(CMAKE_CXX_STANDARD_REQUIRED True)   # 编译器必须严格遵循指定的 C++ 标准版本
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS    # 查找 Qt 组件库
+# 查找 Qt6 组件
+# 自动导入头文件路径和库路径
+find_package(Qt6 REQUIRED COMPONENTS
     Core
     PrintSupport
     Xml
 )
 
-include_directories(                    # 添加包含目录
-    ${CMAKE_SOURCE_DIR}/include
-    /home/jiao/Desktop/qicstable-master/include
-    /usr/include/postgresql
-)
-
-add_executable(paging                   # 生成可执行文件
+# 定义源文件和头文件列表，便于管理
+set(SOURCES
     src/main.cc
-    include/paging_window.h
     src/paging_window.cc
     src/get_data.cc
 )
+set(HEADERS
+    include/paging_window.h
+)
 
-target_link_libraries(paging            # 链接 Qt 库到 main
+# 生成可执行文件
+add_executable(paging
+    ${SOURCES}
+    ${HEADERS}
+)
+
+# 头文件路径
+target_include_directories(paging PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    /usr/include/postgresql                     # apt 管理
+    /home/jiao/Desktop/qicstable-master/include # 第三方库
+)
+
+# 动态库路径
+target_link_directories(paging PRIVATE
+    /home/jiao/Desktop/qicstable-master/lib     # 第三方库需要指定路径
+)
+
+# 链接库
+target_link_libraries(paging PRIVATE
+    Qt6::Core
     Qt6::PrintSupport
     Qt6::Xml
-    /home/jiao/Desktop/qicstable-master/lib/libqicstable.so.3
     pq
+    qicstable.so.3
 )
+
+# 启用测试
+enable_testing()
+add_subdirectory(tests)

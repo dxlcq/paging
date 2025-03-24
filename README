@@ -33,7 +33,7 @@
 
     ```bash
     # 需要安装 psycopg2 库
-    python3 tools/CreateData.py
+    python3 scripts/create_data.py
     ```
 
 4. 运行 `paging` 程序

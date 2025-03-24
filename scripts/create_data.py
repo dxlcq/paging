@@ -29,6 +29,7 @@ try:
     # 创建表结构
     temp = '''
     CREATE TABLE events (
+        "编号" SERIAL PRIMARY KEY,
         "时间" TIMESTAMP,
         "地点" CIDR,
         "人物" TEXT,

@@ -3,6 +3,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void GetData::errif(bool condition) const {
+    if (condition) {
+        std::cerr << PQerrorMessage(_conn) << std::endl;
+        PQclear(_res);
+        PQfinish(_conn);
+        exit(1);
+    }
+}
+
 GetData::GetData(std::string conninfo) {
     _conn = PQconnectdb(conninfo.c_str());
     // 连接
@@ -12,15 +21,10 @@ GetData::GetData(std::string conninfo) {
         exit(1);
     }
 
+    // 安全
     _res =
         PQexec(_conn, "SELECT pg_catalog.set_config('search_path', '', false)");
-    // 安全
-    if (PGRES_TUPLES_OK != PQresultStatus(_res)) {
-        std::cerr << PQerrorMessage(_conn) << std::endl;
-        PQclear(_res);
-        PQfinish(_conn);
-        exit(1);
-    }
+    errif(PGRES_TUPLES_OK != PQresultStatus(_res));
     PQclear(_res);
 }
 
@@ -29,68 +33,69 @@ GetData::~GetData() {
     PQfinish(_conn);
 };
 
-std::vector<std::vector<std::string>> GetData::FetchData(
-    const uint32_t one_page_num, const uint32_t show_page_no) {
+const std::vector<std::vector<std::string>>& GetData::FetchData(
+    const uint32_t one_page_num,
+    const uint32_t show_page_no,
+    const std::string& table_name) {
+    // 开始事务块
     _res = PQexec(_conn, "BEGIN");
-    // 事物块开始
-    if (PGRES_COMMAND_OK != PQresultStatus(_res)) {
-        std::cerr << PQerrorMessage(_conn) << std::endl;
-        PQclear(_res);
-        PQfinish(_conn);
-        exit(1);
-    }
+    errif(PGRES_COMMAND_OK != PQresultStatus(_res));
     PQclear(_res);
 
-    _res = PQexec(_conn,
-                  "DECLARE myportal CURSOR FOR select * from public.events");
-    // 使用 myportal 游标来查询 public.events 表中的所有数据
-    if (PGRES_COMMAND_OK != PQresultStatus(_res)) {
-        std::cerr << PQerrorMessage(_conn) << std::endl;
-        PQclear(_res);
-        PQfinish(_conn);
-        exit(1);
-    };
+    // 查询
+    std::string query =
+        "DECLARE myportal CURSOR FOR SELECT count(*) FROM public." + table_name;
+    _res = PQexec(_conn, query.c_str());
+    errif(PGRES_COMMAND_OK != PQresultStatus(_res));
     PQclear(_res);
 
-    _res = PQexec(_conn, "FETCH ALL IN myportal");
     // 获取游标中的所有数据
-    if (PGRES_TUPLES_OK != PQresultStatus(_res)) {
-        std::cerr << PQerrorMessage(_conn) << std::endl;
-        PQclear(_res);
-        PQfinish(_conn);
-        exit(1);
-    };
+    _res = PQexec(_conn, "FETCH ALL IN myportal");
+    errif(PGRES_TUPLES_OK != PQresultStatus(_res));
+    _table_rc.first = std::stoi(PQgetvalue(_res, 0, 0));  // 表的行数
+    PQclear(_res);
 
-    _col_all = PQnfields(_res);
-    _row_all = PQntuples(_res);
-
-    // * * * * * * * * * * * * * * * * * * * * *
-
-    std::vector<std::vector<std::string>> res_table;
-    std::vector<std::string> col_name;
-    // 获取列名
-    for (uint32_t i = 0; i < _col_all; i++)
-        col_name.push_back(std::string(PQfname(_res, i)));
-    res_table.push_back(col_name);
-
-    // one_page_num 每页，第 show_page_no 页
-    for (u_int32_t row_index = (show_page_no - 1) * one_page_num, i = 0;
-         row_index < _row_all && i < one_page_num; row_index++, i++) {
-        std::vector<std::string> row_data;
-        for (uint32_t col_index = 0; col_index < _col_all; col_index++)
-            row_data.push_back(PQgetvalue(_res, row_index, col_index));
-        res_table.push_back(row_data);
-    }
-
-    // * * * * * * * * * * * * * * * * * * * * *
-
-    _res = PQexec(_conn, "CLOSE myportal");
     // 关闭游标
+    _res = PQexec(_conn, "CLOSE myportal");
     PQclear(_res);
 
-    _res = PQexec(_conn, "END");
+    // 查询
+    query = "DECLARE myportal CURSOR FOR SELECT * FROM public." + table_name +
+            " LIMIT " + std::to_string(one_page_num) +
+            " OFFSET " + std::to_string((show_page_no - 1) * one_page_num);
+    // 上面的 query 存在借位！！
+    _res = PQexec(_conn, query.c_str());
+    errif(PGRES_COMMAND_OK != PQresultStatus(_res));
+    PQclear(_res);
+
+    // 获取游标中的所有数据
+    _res = PQexec(_conn, "FETCH ALL IN myportal");
+    errif(PGRES_TUPLES_OK != PQresultStatus(_res));
+
+    _table_rc.second = PQnfields(_res);  // 表的列数
+    // 重置结果集大小
+    _res_table.resize(PQntuples(_res) + 1);  // 行
+    for (auto& c : _res_table)
+        c.resize(PQnfields(_res));  // 列
+
+    // 获取列名
+    for (auto j = 0; j < _table_rc.second; ++j)
+        _res_table[0][j] = std::string(PQfname(_res, j));
+
+    // 获取数据
+    for (auto i = 0; i + 1 < _res_table.size(); ++i) {
+        for (auto j = 0; j < _res_table[i].size(); ++j)
+            _res_table[i + 1][j] = std::string(PQgetvalue(_res, i, j));
+    }
+    PQclear(_res);
+
+    // 关闭游标
+    _res = PQexec(_conn, "CLOSE myportal");
+    PQclear(_res);
+
     // 事物块结束
+    _res = PQexec(_conn, "END");
     PQclear(_res);
 
-    return res_table;
+    return _res_table;
 }
