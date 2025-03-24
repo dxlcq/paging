@@ -11,7 +11,7 @@
             // 可执行文件路径为当前打开文件的路径和文件名（不带扩展名）
             "program": "${fileDirname}/${fileBasenameNoExtension}",
             // 是否在程序入口处停止
-            "stopAtEntry": false,
+            "stopAtEntry": true,
             // 当前工作目录为VS Code的工作区目录
             "cwd": "${workspaceFolder}",
             // 调试器类型为gdb
@@ -22,7 +22,7 @@
             "environment": [
                 {
                     "name": "DISPLAY",
-                    "value": "localhost:10.0"
+                    "value": "localhost:11.0"
                 }
             ],
         }

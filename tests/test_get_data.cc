@@ -2,7 +2,7 @@
 
 int32_t main(int argc, char **argv) {
     auto get_data = new GetData();
-    auto s = get_data->FetchData(6, 6, "events");
+    auto s = get_data->FetchData(3, 6, "events");
     auto table_rc = get_data->GetTableRC();
     std::cout << table_rc.first << " " << table_rc.second << std::endl; // 输出表的行数和列数
     // 打印查询结果

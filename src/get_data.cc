@@ -13,6 +13,9 @@ void GetData::errif(bool condition) const {
 }
 
 GetData::GetData(std::string conninfo) {
+    // 初始化
+    _res_table = std::make_unique<std::vector<std::vector<std::string>>>();
+    
     _conn = PQconnectdb(conninfo.c_str());
     // 连接
     if (CONNECTION_OK != PQstatus(_conn)) {
@@ -61,8 +64,8 @@ const std::vector<std::vector<std::string>>& GetData::FetchData(
 
     // 查询
     query = "DECLARE myportal CURSOR FOR SELECT * FROM public." + table_name +
-            " LIMIT " + std::to_string(one_page_num) +
-            " OFFSET " + std::to_string((show_page_no - 1) * one_page_num);
+            " LIMIT " + std::to_string(one_page_num) + " OFFSET " +
+            std::to_string((show_page_no - 1) * one_page_num);
     // 上面的 query 存在借位！！
     _res = PQexec(_conn, query.c_str());
     errif(PGRES_COMMAND_OK != PQresultStatus(_res));
@@ -74,18 +77,19 @@ const std::vector<std::vector<std::string>>& GetData::FetchData(
 
     _table_rc.second = PQnfields(_res);  // 表的列数
     // 重置结果集大小
-    _res_table.resize(PQntuples(_res) + 1);  // 行
-    for (auto& c : _res_table)
+    
+    _res_table->resize(PQntuples(_res) + 1);  // 行
+    for (auto& c : *_res_table)
         c.resize(PQnfields(_res));  // 列
 
     // 获取列名
     for (auto j = 0; j < _table_rc.second; ++j)
-        _res_table[0][j] = std::string(PQfname(_res, j));
+        _res_table->at(0).at(j) = std::string(PQfname(_res, j));
 
     // 获取数据
-    for (auto i = 0; i + 1 < _res_table.size(); ++i) {
-        for (auto j = 0; j < _res_table[i].size(); ++j)
-            _res_table[i + 1][j] = std::string(PQgetvalue(_res, i, j));
+    for (auto i = 0; i + 1 < _res_table->size(); ++i) {
+        for (auto j = 0; j < _res_table->at(i).size(); ++j)
+            _res_table->at(i + 1).at(j) = std::string(PQgetvalue(_res, i, j));
     }
     PQclear(_res);
 
@@ -97,5 +101,5 @@ const std::vector<std::vector<std::string>>& GetData::FetchData(
     _res = PQexec(_conn, "END");
     PQclear(_res);
 
-    return _res_table;
+    return *_res_table;
 }

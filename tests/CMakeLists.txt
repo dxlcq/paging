@@ -1,22 +1,20 @@
-SET(TEST_NAME paging_test)
+set(TEST_NAME_1 test_get_data)
 
-set(TEST_SOURCES
+set(TEST_1_SOURCES
     test_get_data.cc
     ../include/get_data.h
     ../src/get_data.cc
 )
 
-add_executable(${TEST_NAME} 
-    ${TEST_SOURCES}
+add_executable(${TEST_NAME_1} 
+    ${TEST_1_SOURCES}
 )
 
-# 添加 include 目录
-target_include_directories(${TEST_NAME} PRIVATE
+target_include_directories(${TEST_NAME_1} PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     /usr/include/postgresql
 )
 
-# 链接库
-target_link_libraries(${TEST_NAME} PRIVATE
+target_link_libraries(${TEST_NAME_1} PRIVATE
     pq
 )

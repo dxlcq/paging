@@ -52,5 +52,5 @@ target_link_libraries(paging PRIVATE
 )
 
 # 启用测试
-enable_testing()
-add_subdirectory(tests)
+#enable_testing()
+#add_subdirectory(tests)

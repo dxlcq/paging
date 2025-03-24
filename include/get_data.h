@@ -2,9 +2,9 @@
 
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
-
 #include "libpq-fe.h"
 
 class GetData {
@@ -31,9 +31,8 @@ class GetData {
 
    private:
     void errif(bool) const;
-
-    PGconn* _conn;                                     // 数据库连接对象
-    PGresult* _res;                                    // 查询结果集
-    std::vector<std::vector<std::string>> _res_table;  // 存储查询结果的二维数组
-    std::pair<uint32_t, uint32_t> _table_rc;           // 表的大小
+    PGconn* _conn;   // 数据库连接对象
+    PGresult* _res;  // 查询结果集
+    std::unique_ptr<std::vector<std::vector<std::string>>> _res_table;
+    std::pair<uint32_t, uint32_t> _table_rc;  // 表的大小
 };
